@@ -265,6 +265,15 @@ onMounted(() => {
     },
   })
 
+  // 侦听屏幕宽高修改，调整相机，渲染器宽高
+  function handOnsize () {
+    camera.aspect = window.innerWidth / window.innerHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(window.innerWidth, window.innerHeight)
+  }
+
+  window.addEventListener('resize', handOnsize)
+
   animate()
 })
 
@@ -298,7 +307,7 @@ onMounted(() => {
       <span>即将进入...{{ progress }}%</span>
     </div>
 
-    <!--  -->
+    <!-- 标题 -->
     <div class="title">酷炫3D地球</div>
   </div>
 </template>
