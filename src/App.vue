@@ -14,6 +14,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 // 获取画布节点
 const sceneDom = ref(null)
 
+// 获取加载进度
+const progress = ref(0)
+
 // 经纬度坐标转球面坐标计算公式
 function lon2xyz (R, longitude, latitude) {
   // 转弧度值
@@ -92,6 +95,7 @@ onMounted(() => {
 
   // 渲染函数
   function animate () {
+    controls.update()
     requestAnimationFrame( animate )
     renderer.render( scene, camera )
   }
@@ -264,14 +268,92 @@ onMounted(() => {
   animate()
 })
 
+  /* 
+    LoadingManager是一个全局实例, 当其他加载器没有指定加载管理器时，
+    它将被其他大多数的加载器设为默认的加载管理器。
+  */
+  THREE.DefaultLoadingManager.onProgress = function (url, loaded, total) {
+    /* 
+      url — 被加载的项的url。
+      itemsLoaded — 目前已加载项的个数。
+      itemsTotal — 总共所需要加载项的个数。
+    */
+    // console.log(url, loaded, total)
+    progress.value = new Number( (loaded / total) *100 ).toFixed(2)
+  }
+
 </script>
 
 <template>
   <div class="home">
+    <!-- 画布 -->
     <div class="canvas-container" ref="sceneDom"></div>
+
+    <!-- 模糊地球背景图 -->
+    <div class="loading" v-if="progress != 100"></div>
+
+    <!-- 加载进度 -->
+    <div class="progress" v-if="progress != 100">
+      <img src="./assets/images/loading.gif" alt="加载进度" />
+      <span>即将进入...{{ progress }}%</span>
+    </div>
+
+    <!--  -->
+    <div class="title">酷炫3D地球</div>
   </div>
 </template>
 
 <style scoped>
+.home {
+  width: 100vw;
+  height: 100vh;
+  transform-origin: center;
+}
+.canvas-container {
+  width: 100vw;
+  height: 100vh;
+}
+.loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  background-image: url('./assets/images/loading.jpg');
+  background-size: cover;
+  /* 模糊或颜色偏移等图形效果应用于元素 */
+  filter: blur(50px);
+  z-index: 100;
+}
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 101;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  color: #fff;
+}
+.progress > img {
+  padding: 0 15px;
+}
 
+.title {
+  width: 380px;
+  height: 40px;
+  position: fixed;
+  right: 100px;
+  top: 50px;
+  background-color: rgba(0, 0, 0, 0.5);
+  line-height: 40px;
+  text-align: center;
+  color: #fff;
+  border-radius: 5px;
+  z-index: 110;
+  user-select:none;
+}
 </style>
