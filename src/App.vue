@@ -21,6 +21,11 @@ function lon2xyz (R, longitude, latitude) {
   let lat = (latitude * Math.PI) / 180
   // js坐标系z坐标轴对应经度-90°，而不是90°
   lon = -lon
+
+  // 经纬度坐标转球面坐标计算公式
+  const x = R * Math.cos(lat) * Math.cos(lon);
+  const y = R * Math.sin(lat);
+  const z = R * Math.cos(lat) * Math.sin(lon);
   // 返回球面坐标
   return new THREE.Vector3(x, y, z)
 }
@@ -34,7 +39,7 @@ onMounted(() => {
     45,
     window.innerWidth / window.innerHeight,
     0.1,
-    10000
+    100000
   )
   camera.position.set(0, 50, 300)
   scene.add(camera)
@@ -134,14 +139,14 @@ onMounted(() => {
   // 创建地球内 内发光点精灵
   const spriteTexture1 = new THREE.TextureLoader().load('/images/innerGlow.png')
   const spriteMaterial1 = new THREE.SpriteMaterial({
-      map: spriteTexture1,
-      color: 0x4d76cf,
-      transparent: true,
-      // 渲染此材质是否对深度缓冲区有任何影响。默认为true。
-      depthWrite: false,
-      // 是否在渲染此材质时启用深度测试。默认为 true。
-      depthTest: false,
-      blending: THREE.AdditiveBlending
+    map: spriteTexture1,
+    color: 0x4d76cf,
+    transparent: true,
+    // 渲染此材质是否对深度缓冲区有任何影响。默认为true。
+    depthWrite: false,
+    // 是否在渲染此材质时启用深度测试。默认为 true。
+    depthTest: false,
+    blending: THREE.AdditiveBlending
   })
 
   const sprite1 = new THREE.Sprite(spriteMaterial1)
@@ -151,20 +156,110 @@ onMounted(() => {
   const scale = new THREE.Vector3(1, 1, 1)
 
   // 实现光柱
-  const lightPillarTexture = new THREE.TextureLoader().load('/images/light_column.png')
-  const lightPillarGeometry = new THREE.PlaneGeometry(3, 20)
-  const lightPillarMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    map: lightPillarTexture,
-    alphaMap: lightPillarTexture,
+  for (let i = 0; i < 30; i++) {
+    const lightPillarTexture = new THREE.TextureLoader().load('/images/light_column.png')
+    const lightPillarGeometry = new THREE.PlaneGeometry(3, 20)
+    const lightPillarMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      map: lightPillarTexture,
+      alphaMap: lightPillarTexture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
+
+    const lightPillar = new THREE.Mesh(lightPillarGeometry, lightPillarMaterial)
+    lightPillar.add(lightPillar.clone().rotateY(Math.PI / 2))
+
+    // 创建波纹扩散效果
+    const circlePlane = new THREE.PlaneGeometry(6, 6)
+    const circleTexture = new THREE.TextureLoader().load('/images/label.png')
+    const circleMaterial = new THREE.MeshBasicMaterial({
+      map: circleTexture,
+      color: 0xffffff,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+
+    const circleMesh = new THREE.Mesh(circlePlane, circleMaterial)
+
+    circleMesh.rotation.x = -Math.PI / 2
+    circleMesh.position.set(0, -7, 0)
+    lightPillar.add(circleMesh)
+
+    // 对波纹作动画
+    gsap.to(circleMesh.scale, {
+      duration: 1 + Math.random() * 0.5,
+      x: 2,
+      y: 2,
+      z: 2,
+      repeat: -1,
+      delay: Math.random() * 0.5,
+      yoyo: true,
+      ease: 'power2.inOut'
+    })
+
+    // 光柱位置
+    const lat = Math.random() * 180 -90
+    const lon = Math.random() * 360 -180
+    const position = lon2xyz(60, lon, lat)
+    lightPillar.position.set( position.x, position.y, position.z )
+
+    // 表示对象局部旋转的Quaternion（四元数）。
+    lightPillar.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      position.clone().normalize()
+    )
+    scene.add(lightPillar)
+  }
+
+  // 创建围绕地球运行的月球
+  const moonTexture = new THREE.TextureLoader().load('/images/moon.jpg')
+  const moonGeometry = new THREE.SphereGeometry( 5, 32, 32)
+  const moonMaterial = new THREE.MeshStandardMaterial({
+    map: moonTexture,
+    emissive: 0xffffff,
+    emissiveMap: moonTexture
+  })
+
+  const moon = new THREE.Mesh( moonGeometry, moonMaterial )
+  moon.position.set(150, 0, 0)
+  scene.add(moon)
+
+  // 创建月球环
+  const moonRingTexture = new THREE.TextureLoader().load('/images/moon_ring.png')
+  const moonRingGeometry = new THREE.RingGeometry(145, 155, 64)
+  const moonRingMaterial = new THREE.MeshBasicMaterial({
+    map: moonRingTexture,
     transparent: true,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
-    depthWrite: false
+    depthWrite: false,
+    opacity: 0.5
   })
 
-  const lightPillar = new THREE.Mesh(lightPillarGeometry, lightPillarMaterial)
-  scene.add(lightPillar.clone().rotateY(Math.PI / 2))
+  const moonRing = new THREE.Mesh(moonRingGeometry, moonRingMaterial)
+  moonRing.rotation.x = -Math.PI / 2
+  scene.add(moonRing)
+
+  // 控制月球围绕月球环旋转
+  let time = {
+    value: 0
+  }
+  gsap.to(time, {
+    value: 1,
+    duration: 10,
+    repeat: -1,
+    ease: "linear",
+    onUpdate: () => {
+      moon.position.x = 150 * Math.cos(time.value * Math.PI * 2);
+      moon.position.z = 150 * Math.sin(time.value * Math.PI * 2);
+      moon.rotation.y = time.value * Math.PI * 8;
+    },
+  })
 
   animate()
 })
